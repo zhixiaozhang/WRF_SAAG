@@ -90,8 +90,6 @@ state    real   AFWA_TORNADO     ij     misc        1         -      rh02       
 state    real   TORNADO_MASK     ij     misc        1         -      r          "TORNADO_MASK"       "Tornado mask, 1 if AFWA tornado > 0"                    ""
 state    real   TORNADO_DUR      ij     misc        1         -      r          "TORNADO_DUR"        "Tornado duration"                                       "sec"
 
-#  Package declaration for AFWA diagnostics zhixiao 0520
-
 package   afwa_diag      afwa_diag_opt==1            -             state:afwa_pwat
 package   afwa_ptype     afwa_ptype_opt==1           -             state:afwa_precip,afwa_totprecip,afwa_rain,afwa_snow,afwa_ice,afwa_fzra,afwa_snowfall
 package   afwa_vil       afwa_vil_opt==1             -             state:lwp,iwp,refd,fzlev,cac_lwp,cac_iwp,cac_swupt,cac_swdnt,cac_lwupt,cac_swupb,cac_swdnb,cac_lwupb,cac_lwdnb,cac_gsw,cac_hfx,cac_lh,cac_rainnc,cac_graupelnc,cac_t2,cac_q2,cac_psfc,cac_u10,cac_v10,cac_pblh,cac_tsk,cac_refd_max,cac_pwat,cac_fzlev,cac_cape_mu,cac_cin_mu,cac_zlfc,cac_lcl,cac_el,cac_lpl,cac_taod5502d
