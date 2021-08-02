@@ -119,7 +119,7 @@ CONTAINS
     write ( message, * ) 'inside afwa_diagnostics_driver'
     CALL wrf_debug( 100 , message )
 
-    ! Get timing info zhixiao 
+    ! Get timing info
     ! Want to know if when the last history output was
     ! Check history and auxhist2 alarms to check last ring time and how often
     ! they are set to ring
@@ -146,11 +146,6 @@ CONTAINS
                          Currtime .ge. aux2_time + aux2int - dtint )
     write ( message, * ) 'is output timestep? ', is_output_timestep
     CALL wrf_debug( 100 , message )
-    !zhixiao
-    is_diag_timestep = (Currtime .ge. hist_time + histint - dtint .or. &
-                         Currtime .ge. aux21_time + aux21int - dtint )
-
-    is_hist_timestep = (Currtime .eq. hist_time)
 
     ! Following uses an overloaded .eq.
     ! ---------------------------------
