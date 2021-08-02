@@ -180,9 +180,9 @@ CONTAINS
     ENDIF
    
     ! ---------------------------------
-    ! zhixiao do all the diagnostics in aux2 interval
+    ! Do all the diagnostics in aux2/hist intervals, modified by Zhixiao
     IF ( is_output_timestep ) THEN
-      ! Calculate VIL and reflectivity every history output timestep zhixiao
+      ! Calculate customized VIL by Zhixiao
       ! ------------------------------------------------------------
       IF ( config_flags % afwa_vil_opt == 1 ) THEN
         z_e=grid%refl_10cm
@@ -190,7 +190,6 @@ CONTAINS
         CALL wrf_debug( 100 , message )
         CALL vert_int_liquid_diagnostics (grid % lwp            &
                              , grid % iwp                       &
-                             , grid % refd_max                  &
                              , grid % fzlev                     &
                              , grid % t_phy                     &
                              , moist(:,:,:,P_QC)         &
@@ -198,7 +197,6 @@ CONTAINS
                              , moist(:,:,:,P_QR)         &
                              , moist(:,:,:,P_QS)         &
                              , moist(:,:,:,P_QG)         &
-                             , grid % refl_10cm                 &
                              , dz8w                             &
                              , rho                              &
                              , grid % z                         &
