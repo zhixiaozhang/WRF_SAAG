@@ -119,7 +119,7 @@ CONTAINS
     write ( message, * ) 'inside afwa_diagnostics_driver'
     CALL wrf_debug( 100 , message )
 
-    ! Get timing info
+    ! Get timing info 
     ! Want to know if when the last history output was
     ! Check history and auxhist2 alarms to check last ring time and how often
     ! they are set to ring
@@ -178,20 +178,7 @@ CONTAINS
         ENDDO
       ENDIF
     ENDIF
-    IF ( is_hist_timestep ) THEN
-	 !zhixiao compute lat and lon for cacti domain
-         DO j = jms , jme
-            DO i = ims , ime
-                grid%cac_long(i,j) = -999.
-                grid%cac_lat(i,j)= -999.
-	        IF(grid%xlong(i,j) .LE. model_config_rec%lon_e .AND. grid%xlong(i,j) .GE. model_config_rec%lon_s .AND. &
-                 grid%xlat(i,j) .LE. model_config_rec%lat_e .AND. grid%xlat(i,j) .GE. model_config_rec%lat_s) THEN
-			grid%cac_long(i,j) = grid%xlong(i,j)
-                  	grid%cac_lat(i,j) = grid%xlat(i,j)
-                ENDIF
-            END DO
-         END DO
-     ENDIF !compute cacti long and lat
+   
     ! ---------------------------------
     ! zhixiao do all the diagnostics in aux2 interval
     IF ( is_output_timestep ) THEN
