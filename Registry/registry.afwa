@@ -90,40 +90,6 @@ state    real   AFWA_TORNADO     ij     misc        1         -      rh02       
 state    real   TORNADO_MASK     ij     misc        1         -      r          "TORNADO_MASK"       "Tornado mask, 1 if AFWA tornado > 0"                    ""
 state    real   TORNADO_DUR      ij     misc        1         -      r          "TORNADO_DUR"        "Tornado duration"                                       "sec"
 
-#CACTI Subdomain 2-D variable zhixiao
-state    real   CAC_LWP          ij     misc        1         -      h02        "CAC_LWP"   "Liquid water path in CACTI domain"    "kg m-2"
-state    real   CAC_IWP          ij     misc        1         -      h02        "CAC_IWP"   "Ice water path in CACTI domain"       "kg m-2"
-state    real   CAC_SWUPT        ij     misc        1         -      h02        "CAC_SWUPT"   "Instantaneous upwelling shortwave flux at top in CACTI domain"    "W m-2"
-state    real   CAC_SWDNT        ij     misc        1         -      h02        "CAC_SWDNT"   "Instantaneous downwelling shortwave flux at top in CACTI domain"  "W m-2"
-state    real   CAC_LWUPT        ij     misc        1         -      h02        "CAC_LWUPT"   "Instantaneous upwelling long wave flux at top in CACTI domain"    "W m-2"
-state    real   CAC_SWUPB        ij     misc        1         -      h02        "CAC_SWUPB"   "Instantaneous upwelling shortwave flux at bottom in CACTI domain" "W m-2"
-state    real   CAC_SWDNB        ij     misc        1         -      h02        "CAC_SWDNB"   "Instantaneous downwelling shortwave flux at bottom in CACTI domain" "W m-2"
-state    real   CAC_LWUPB        ij     misc        1         -      h02        "CAC_LWUPB"   "Instantaneous upwelling longwave flux at bottom in CACTI domain"  "W m-2"
-state    real   CAC_LWDNB        ij     misc        1         -      h02        "CAC_LWDNB"   "Instantaneous downwelling longwave flux at bottom in CACTI domain" "W m-2"
-state    real   CAC_GSW          ij     misc        1         -      h02        "CAC_GSW"     "Net short wave flux at ground surface in CACTI domain" "W m-2"
-state    real   CAC_HFX          ij     misc        1         -      h02        "CAC_HFX"     "Upward sensible heat flux at the surface in CACTI domain" "W m-2"
-state    real   CAC_LH           ij     misc        1         -      h02        "CAC_LH"      "Upward latent heat flux at the surface in CACTI domain" "W m-2"
-state    real   CAC_RAINNC       ij     misc        1         -      h02        "CAC_RAINNC"  "Accumulated total grid scale precipiation in CACTI domain" "mm"
-state    real   CAC_GRAUPELNC    ij     misc        1         -      h02        "CAC_GRAUPELNC"  "Accumulated total grid scale graupel in CACTI domain" "mm"
-state    real   CAC_T2           ij     misc        1         -      h02        "CAC_T2"     "2-m Temperature in CACTI domain" "K"
-state    real   CAC_Q2           ij     misc        1         -      h02        "CAC_Q2"     "2-m vapor mixing ratioin CACTI domain" "kg/kg"
-state    real   CAC_PSFC         ij     misc        1         -      h02        "CAC_PSFC"   "Surface pressure in CACTI domain" "Pa"
-state    real   CAC_U10          ij     misc        1         -      h02        "CAC_U10"    "Wind U-Component in CACTI domain, earth relative"  "m/s"
-state    real   CAC_V10          ij     misc        1         -      h02        "CAC_V10"    "Wind V-Component in CACTI domain, earth relative" "m/s"
-state    real   CAC_PBLH         ij     misc        1         -      h02        "CAC_PBLH"   "PBL height in CACTI domain"  "m"
-state    real   CAC_TSK          ij     misc        1         -      h02        "CAC_TSK"    "Surface skin temperature in CACTI domain" "K"
-state    real   CAC_REFD_MAX	 ij     misc        1         -      h02        "CAC_REFD_MAX"  "Composite reflectivity in CACTI domain" "dBZ"
-state    real   CAC_PWAT	 ij     misc        1         -      h02        "CAC_PWAT"  "AFWA Diagnostic: Precipitable Water in CACTI domain" "kg m-2"
-state    real   CAC_FZLEV	 ij     misc        1         -      h02        "CAC_FZLEV"  "Freezing level in CACTI domain"  "m"
-state    real   CAC_CAPE_MU	 ij     misc        1         -      h02        "CAC_CAPE_MU"  "Modified AFWA Diagnostic: Most unstable CAPE starting from max theta-e parcel below 500 mb in CACTI domain"  "J kg-1"
-state    real   CAC_CIN_MU    	 ij     misc        1         -      h02        "CAC_CIN_MU" "Modified AFWA Diagnostic: Most unstable CIN starting from max theta-e parcel below 500 mb in CACTI domain"  "J kg-1"
-state    real   CAC_ZLFC    	 ij     misc        1         -      h02        "CAC_ZLFC" "Modified AFWA Diagnostic: Level of Free Convection starting from the most unstable parcel in CACTI domain"  "m"
-state    real   CAC_EL    	 ij     misc        1         -      h02        "CAC_EL" "Added Diagnostic: Equilibrium level starting from the most unstable parcel in CACTI domain"  "m"
-state    real   CAC_LCL          ij     misc        1         -      h02        "CAC_LCL" "Added Diagnostic: Lifted condensation level starting from the most unstable parcel in CACTI domain"  "m"
-state    real   CAC_LPL          ij     misc        1         -      h02        "CAC_LPL" "Added Diagnostic: Added Diagnostic: Lifted most unstable parcel level with the max theta-e below 500 mb in CACTI domain"  "m"
-state    real   CAC_TAOD5502D    ij     misc        1         -      h02        "CAC_TAOD5502D"  "2D aerosol optical depth at 550 nm (MP=28) in CACTI domain"  ""
-
-
 #  Package declaration for AFWA diagnostics zhixiao 0520
 
 package   afwa_diag      afwa_diag_opt==1            -             state:afwa_pwat
