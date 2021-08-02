@@ -1276,7 +1276,6 @@ CONTAINS
 !zhixiao
   SUBROUTINE vert_int_liquid_diagnostics (lwp                   &
                              , iwp                              &
-                             , refd_max                         &
                              , fzlev                            &
                              , t_phy                            &
                              , qcloud                           &
@@ -1284,7 +1283,6 @@ CONTAINS
                              , qrain                            &
                              , qsnow                            &
                              , qgrpl                            &
-                             , z_e                              &
                              , dz8w                             &
                              , rho                              &
                              , z                                &
@@ -1311,7 +1309,6 @@ CONTAINS
     REAL, DIMENSION( ims:ime, jms:jme ),                        &
          INTENT(INOUT) ::                             lwp       &
                                               ,       iwp       &
-                                              ,       refd_max  &
                                               ,       fzlev
 
 
@@ -1326,13 +1323,9 @@ CONTAINS
     DO j = jps, MIN(jpe,jde-1)
       lwp (i,j) = 0.0
       iwp (i,j) = 0.0
-      refd_max (i,j) = -999.
       DO k = kps, MIN(kpe,kde-1)
         lwp(i,j) = lwp(i,j)+(qcloud(i,k,j)+qrain(i,k,j))*dz8w(i,k,j)*rho(i,k,j)
         iwp(i,j) = iwp(i,j)+(qice(i,k,j)+qsnow(i,k,j)+qgrpl(i,k,j))*dz8w(i,k,j)*rho(i,k,j) 
-        IF (z_e(i,k,j) .gt. refd_max(i,j)) THEN
-            refd_max(i,j) = z_e(i,k,j)
-        ENDIF
         ! Freezing level calculation
         ! --------------------------
         IF (t_phy(i,k,j) .lt. 273.15) THEN
