@@ -180,7 +180,7 @@ CONTAINS
     ENDIF
    
     ! ---------------------------------
-    ! Do all the diagnostics in aux2/hist intervals, modified by Zhixiao
+    ! Do all the diagnostics at aux2/hist intervals, modified by Zhixiao
     IF ( is_output_timestep ) THEN
       ! Calculate customized VIL by Zhixiao
       ! ------------------------------------------------------------
