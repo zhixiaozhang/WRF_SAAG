@@ -203,7 +203,18 @@ CONTAINS
                              , ids, ide, jds, jde, kds, kde     &
                              , ims, ime, jms, jme, kms, kme     &
                              , ips, ipe, jps, jpe, kps, kpe )
-
+      ! Calculate precipitable water, corrected by zhixiao
+      ! ----------------------------
+        nz=kme-kms+1
+        DO i=ims,ime
+	  DO j=jms,jme
+	     grid % afwa_pwat ( i, j ) = Pwat( nz,                  &
+					    moist(i,kms:kme,j,P_QV), &
+					    moist(i,kms:kme,j,P_QC), &
+					    dz8w(i,kms:kme,j),   &
+					    rho(i,kms:kme,j) )
+	  ENDDO
+        ENDDO
       ENDIF  ! afwa_vil_opt ==1
 
     ! Calculate total pressure for buoy module zhixiao
@@ -230,7 +241,7 @@ CONTAINS
       CALL wrf_debug ( DEBUG_LEVEL, 'Option rh requires: QV' )
     END IF
 
-      ! Calculate buoyancy parameters first zhixiao
+      ! Calculate customized buoyancy parameters by zhixiao
       ! ------------------------------
       IF ( config_flags % afwa_buoy_opt == 1 ) THEN
         nz=kme-kms+1
@@ -255,20 +266,6 @@ CONTAINS
           ENDDO
         ENDDO
       ENDIF  ! afwa_buoy_opt == 1
-
-      ! Calculate precipitable water zhixiao
-      ! ----------------------------
-
-      nz=kme-kms+1
-      DO i=ims,ime
-        DO j=jms,jme
-           grid % afwa_pwat ( i, j ) = Pwat( nz,                  &
-                                            moist(i,kms:kme,j,P_QV), &
-                                            moist(i,kms:kme,j,P_QC), &
-                                            dz8w(i,kms:kme,j),   &
-                                            rho(i,kms:kme,j) )
-        ENDDO
-      ENDDO
 
        ! Subtract subdomain zhixiao
       ! ------------------------------------------------------------
