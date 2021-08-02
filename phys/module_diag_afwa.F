@@ -32,7 +32,7 @@ CONTAINS
     USE module_state_description
     USE module_model_constants
     USE module_utility
-    USE module_streams, ONLY: history_alarm, auxhist2_alarm, auxhist21_alarm !zhixiao
+    USE module_streams, ONLY: history_alarm, auxhist2_alarm
 #ifdef DM_PARALLEL
     USE module_dm, ONLY: wrf_dm_sum_real, wrf_dm_maxval
 #endif
@@ -129,8 +129,6 @@ CONTAINS
          ringinterval=histint)
     CALL WRFU_ALARMGET( grid%alarms( AUXHIST2_ALARM ), prevringtime=aux2_time, &
          ringinterval=aux2int)
-    CALL WRFU_ALARMGET( grid%alarms( AUXHIST21_ALARM ), prevringtime=aux21_time, &
-         ringinterval=aux21int)
 
     ! Get domain clock
     ! ----------------
