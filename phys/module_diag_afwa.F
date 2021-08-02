@@ -1110,7 +1110,7 @@ CONTAINS
                                        ,                 zlfc_msl &
                                        ,                plfc(i,j) &
                                        ,                lidx(i,j) &
-                                       ,                zlfc_msl  & !zhixiao
+                                       ,                zlfc_msl  & !Adapt to customized buoyancy function output format, adjusted by zhixiao
                                        ,                        3 ) !Surface
 
           ! Add 273.15 to lifted index per some standard I don't understand
