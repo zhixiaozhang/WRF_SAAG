@@ -107,12 +107,11 @@ CONTAINS
     REAL :: u1km, v1km, ublend, vblend, u2000, v2000, us, vs
     LOGICAL :: is_target_level
 
-    ! Timing zhixiao
+    ! Timing
     ! ------
-    TYPE(WRFU_Time) :: hist_time, aux2_time, aux21_time,CurrTime, StartTime
-    TYPE(WRFU_TimeInterval) :: dtint, histint, aux2int,aux21int
-    LOGICAL :: is_after_history_dump, is_output_timestep, &
-               is_first_timestep,is_diag_timestep,is_hist_timestep
+    TYPE(WRFU_Time) :: hist_time, aux2_time, CurrTime, StartTime
+    TYPE(WRFU_TimeInterval) :: dtint, histint, aux2int
+    LOGICAL :: is_after_history_dump, is_output_timestep, is_first_timestep
     INTEGER , PARAMETER :: DEBUG_LEVEL = 1
 
     ! Chirp the routine name for debugging purposes
