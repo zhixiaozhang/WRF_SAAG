@@ -628,7 +628,7 @@ CONTAINS
       ENDIF  ! afwa_turb_opt == 1
 
       ! Calculate equivalent radar reflectivity factor (z_e) using 
-      ! old RIP code (2004) if running radar or VIL packages
+      ! old RIP code (2004) if running radar or VIL packages.
       ! ----------------------------------------------------------
       IF ( config_flags % afwa_radar_opt == 1 )THEN
         write ( message, * ) 'Calculating Radar'
