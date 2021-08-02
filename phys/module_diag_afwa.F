@@ -217,29 +217,29 @@ CONTAINS
         ENDDO
       ENDIF  ! afwa_vil_opt ==1
 
-    ! Calculate total pressure for buoy module zhixiao
-    ! -------------- 
-    DO i=ims, ime
-      DO k=kms, kme
-	DO j=jms, jme
-	  ptot(i,k,j)=grid%pb(i,k,j)+grid%p(i,k,j)
-	ENDDO
-      ENDDO
-    ENDDO
-
-   ! Calculate relative humidity for buoy module zhixiao
-    ! ---------------------------
-    IF ( F_QV ) THEN
-      DO i=ims,ime
-        DO k=kms,kme    
-          DO j=jms,jme
-            rh(i,k,j)=calc_rh(ptot(i,k,j),grid%t_phy(i,k,j),moist(i,k,j,P_QV))
-          ENDDO
+     ! Calculate total pressure for buoy module zhixiao
+     ! -------------- 
+      DO i=ims, ime
+        DO k=kms, kme
+	  DO j=jms, jme
+	    ptot(i,k,j)=grid%pb(i,k,j)+grid%p(i,k,j)
+	  ENDDO
         ENDDO
       ENDDO
-    ELSE
-      CALL wrf_debug ( DEBUG_LEVEL, 'Option rh requires: QV' )
-    END IF
+
+      ! Calculate relative humidity for buoy module zhixiao
+      ! ---------------------------
+      IF ( F_QV ) THEN
+        DO i=ims,ime
+          DO k=kms,kme    
+            DO j=jms,jme
+              rh(i,k,j)=calc_rh(ptot(i,k,j),grid%t_phy(i,k,j),moist(i,k,j,P_QV))
+            ENDDO
+          ENDDO
+        ENDDO
+      ELSE
+        CALL wrf_debug ( DEBUG_LEVEL, 'Option rh requires: QV' )
+      END IF
 
       ! Calculate customized buoyancy parameters by zhixiao
       ! ------------------------------
@@ -266,82 +266,11 @@ CONTAINS
           ENDDO
         ENDDO
       ENDIF  ! afwa_buoy_opt == 1
-
-       ! Subtract subdomain zhixiao
-      ! ------------------------------------------------------------
-      DO j = jms , jme
-         DO i = ims , ime
-		grid%cac_lwp(i,j)=-999.
-		grid%cac_iwp(i,j)=-999.
-		grid%cac_swupt(i,j)=-999.
-		grid%cac_swdnt(i,j)=-999.
-		grid%cac_lwupt(i,j)=-999.
-		grid%cac_swupb(i,j)=-999.
-		grid%cac_swdnb(i,j)=-999.
-		grid%cac_lwupb(i,j)=-999.
-		grid%cac_lwdnb(i,j)=-999.
-		grid%cac_gsw(i,j)=-999.
-		grid%cac_hfx(i,j)=-999.
-		grid%cac_lh(i,j)=-999.
-		grid%cac_rainnc(i,j)=-999.
-		grid%cac_graupelnc(i,j)=-999.
-		grid%cac_t2(i,j)=-999.
-		grid%cac_q2(i,j)=-999.
-		grid%cac_psfc(i,j)=-999.
-		grid%cac_u10(i,j)=-999.
-		grid%cac_v10(i,j)=-999.
-		grid%cac_pblh(i,j)=-999.
-		grid%cac_tsk(i,j)=-999.
-		grid%cac_refd_max(i,j)=-999.
-		grid%cac_pwat(i,j)=-999.
-		grid%cac_fzlev(i,j)=-999.
-		grid%cac_cape_mu(i,j)=-999.
-		grid%cac_cin_mu(i,j)=-999.
-		grid%cac_zlfc(i,j)=-999.
-		grid%cac_lcl(i,j)=-999.
-		grid%cac_el(i,j)=-999.
-		grid%cac_lpl(i,j)=-999.
-		grid%cac_taod5502d(i,j)=-999.
-		IF(grid%xlong(i,j) .LE. model_config_rec%lon_e .AND. grid%xlong(i,j) .GE. model_config_rec%lon_s .AND. &
-                 grid%xlat(i,j) .LE. model_config_rec%lat_e .AND. grid%xlat(i,j) .GE. model_config_rec%lat_s) THEN
-			grid%cac_lwp(i,j)=grid%lwp(i,j)
-			grid%cac_iwp(i,j)=grid%iwp(i,j)
-			grid%cac_swupt(i,j)=grid%swupt(i,j)
-			grid%cac_swdnt(i,j)=grid%swdnt(i,j)
-			grid%cac_lwupt(i,j)=grid%lwupt(i,j)
-			grid%cac_swupb(i,j)=grid%swupb(i,j)
-			grid%cac_swdnb(i,j)=grid%swdnb(i,j)
-			grid%cac_lwupb(i,j)=grid%lwupb(i,j)
-			grid%cac_lwdnb(i,j)=grid%lwdnb(i,j)
-			grid%cac_gsw(i,j)=grid%gsw(i,j)
-			grid%cac_hfx(i,j)=grid%hfx(i,j)
-			grid%cac_lh(i,j)=grid%lh(i,j)
-			grid%cac_rainnc(i,j)=grid%rainnc(i,j)
-			grid%cac_graupelnc(i,j)=grid%graupelnc(i,j)
-			grid%cac_t2(i,j)=grid%t2(i,j)
-			grid%cac_q2(i,j)=grid%q2(i,j)
-			grid%cac_psfc(i,j)=grid%psfc(i,j)
-			grid%cac_u10(i,j)=grid%u10(i,j)
-			grid%cac_v10(i,j)=grid%v10(i,j)
-			grid%cac_pblh(i,j)=grid%pblh(i,j)
-			grid%cac_tsk(i,j)=grid%tsk(i,j)
-			grid%cac_refd_max(i,j)=grid%refd_max(i,j)
-			grid%cac_pwat(i,j)=grid%afwa_pwat(i,j)
-			grid%cac_fzlev(i,j)=grid%fzlev(i,j)
-			grid%cac_cape_mu(i,j)=grid%afwa_cape_mu(i,j)
-			grid%cac_cin_mu(i,j)=grid%afwa_cin_mu(i,j)
-			grid%cac_zlfc(i,j)=grid%afwa_zlfc(i,j)
-			grid%cac_lcl(i,j)=grid%afwa_lcl(i,j)
-			grid%cac_el(i,j)=grid%afwa_el(i,j)
-			grid%cac_lpl(i,j)=grid%afwa_lpl(i,j)
-			grid%cac_taod5502d(i,j)=grid%taod5502d(i,j)
-                ENDIF
-         END DO
-      END DO
-			
-    ! move all the other diagnostics to afwa_severe_opt zhixiao
+      
+    ! Move all left diagnostics to afwa_severe_opt. Setting afwa_severe_opt == 0 can disable all left calculations for saving computing time
+    ! Designed by Zhixiao
     ! ------------------------------------------------------------
-    IF ( config_flags % afwa_severe_opt == 1 ) THEN !previous is_diag_timestep zhixiao
+    IF ( config_flags % afwa_severe_opt == 1 ) THEN
        qvapr = moist(:,:,:,P_QV)
        qrain = moist(:,:,:,P_QR)
        qsnow = moist(:,:,:,P_QS)
