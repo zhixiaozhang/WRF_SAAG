@@ -628,7 +628,7 @@ CONTAINS
       ENDIF  ! afwa_turb_opt == 1
 
       ! Calculate equivalent radar reflectivity factor (z_e) using 
-      ! old RIP code (2004) if running radar or VIL packages.zhixiao use Refl_10cm instead of computing z_e
+      ! old RIP code (2004) if running radar or VIL packages
       ! ----------------------------------------------------------
       IF ( config_flags % afwa_radar_opt == 1 )THEN
         write ( message, * ) 'Calculating Radar'
@@ -846,9 +846,9 @@ CONTAINS
         CALL wrf_debug ( DEBUG_LEVEL, 'Option cloud_diagnostics requires: QC, QI, QS' )
       END IF
  
-    ENDIF ! end is_diag_timestep zhixiao
+    ENDIF ! end afwa_severe_opt == 1
 
-    ENDIF  ! end is_output_timestep zhixiao
+    ENDIF  ! end is_output_timestep
 
   END SUBROUTINE afwa_diagnostics_driver
 
