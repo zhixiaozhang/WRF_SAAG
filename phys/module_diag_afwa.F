@@ -1462,7 +1462,7 @@ CONTAINS
                             /(t_phy (i,k,j) - t_phy (i,k-1,j))) &
                             *(z (i,k,j) - z (i,k-1,j))
             ELSE  ! If at surface, use first level.
-              fzlev(i,j) = z(i,k,j)
+              fzlev(i,j) = z (i,k,j)
             ENDIF
           ENDIF
 
