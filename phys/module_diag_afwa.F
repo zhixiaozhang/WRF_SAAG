@@ -102,7 +102,7 @@ CONTAINS
                                               ,         pwater
 
     LOGICAL :: do_buoy_calc
-    REAL :: zlfc_msl, dum1, dum2, dum3, wind_vel, wind_blend,lcl_msl,el_msl,lpl_msl !zhixiao
+    REAL :: zlfc_msl, dum1, dum2, dum3, wind_vel, wind_blend !zhixiao
     REAL :: prate_mm_per_hr, factor
     REAL :: u1km, v1km, ublend, vblend, u2000, v2000, us, vs
     LOGICAL :: is_target_level
