@@ -368,7 +368,7 @@ CONTAINS
   !~ Description:
   !~    This function calculates precipitable water by summing up the 
   !~    water vapor in a column from the first eta layer to model top
-  !~ 
+  !~
   !!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!!
   FUNCTION Pwat  ( nz, qv, qc, dz8w, rho )
 
@@ -520,7 +520,7 @@ CONTAINS
       REAL                    :: g          !~ Acceleration due to gravity
          PARAMETER ( g  = 9.80665 )         !~ m s^-2
       REAL                    :: RUNDEF
-         PARAMETER ( RUNDEF = -999 ) !zhixiao
+         PARAMETER ( RUNDEF = -9.999E30 )
   
       !~ Initialize variables zhixiao
       !  --------------------
