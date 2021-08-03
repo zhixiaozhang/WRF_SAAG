@@ -388,7 +388,10 @@ CONTAINS
      !  ---------------------------
      Pwat=0
      DO k = 1, nz
-       Pwat = Pwat + qv(k) * dz8w(k) * rho(k) !only compute from qv zhixiao
+       !Based on AMS PWAT defination (https://glossary.ametsoc.org/wiki/Precipitable_water)
+        !PWAT is corrected as the column accumulated water vapor rather than water vapor + cloud water.
+        !Modified by Zhixiao
+        Pwat = Pwat + qv(k) * dz8w(k) * rho(k)
      ENDDO
              
   END FUNCTION Pwat
