@@ -799,6 +799,9 @@ CONTAINS
 
       ZMU = hgt ( srclev ) !zhixiao
 
+      IF ( CAPE /= CAPE ) cape = REAL ( 0 )
+
+      IF ( CIN  /= CIN  ) cin  = RUNDEF
       !~ Chirp
       !  -----
   !       WRITE ( *,* ) ' CAPE: ', cape, ' CIN:  ', cin
