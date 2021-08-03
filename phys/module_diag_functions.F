@@ -779,15 +779,11 @@ CONTAINS
             END IF         
          END DO
       END IF
-      !~ Assuming the LCL and LFC are at a pressure level for now
+      !~ convert model level to height
       !  ---------------------------------------------------
       IF ( lfclev > 0 ) THEN
          ZLFC = hgt ( lfclev )
       END IF
-   
-  !    IF ( PLFC /= PLFC .OR. PLFC < REAL (0) ) THEN
-  !       ZLFC = REAL ( -1 )
-  !    END IF
 
       IF ( lcllev > 0 ) THEN !zhixiao
          ZLCL = hgt ( lcllev )
