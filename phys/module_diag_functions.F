@@ -764,7 +764,7 @@ CONTAINS
          !  ----------------------------------------------------------------
          IF (k >= 2) THEN
             IF ( flag .and. buoy (k) < REAL (0) .and. buoy (k-1) >= REAL (0)) THEN
-               ellev = k
+               ellev = k - 1
             END IF
          END IF
       END DO
