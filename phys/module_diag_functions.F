@@ -479,7 +479,6 @@ CONTAINS
       INTEGER                 :: srclev      !~ Level of the source parcel
       REAL                    :: spdiff      !~ Pressure difference
       REAL                    :: srce        !~ Equivalent potential temperature ( K )
-      REAL                    :: srctvk      !~ Source parcel virtual temperature
    
       !~ Parcel variables
       !  ----------------
@@ -495,7 +494,6 @@ CONTAINS
       INTEGER                 :: lfclevlow  !~ Closest lower Level of precise LFC, created by Zhixiao
       INTEGER                 :: ellevhigh  !~ Closest higher Level of precise EL, created by Zhixiao
       INTEGER                 :: ellevlow   !~ Closest lower Level of precise EL, created by Zhixiao
-      INTEGER                 :: lcllev     !~ Closest higher Level of precise LCL, created by Zhixiao
       INTEGER                 :: prcl       !~ Internal parcel type indicator
       INTEGER                 :: mlev       !~ Level for ML calculation
       INTEGER                 :: lyrcnt     !~ Number of layers in mean layer
@@ -613,23 +611,11 @@ CONTAINS
       END IF
    
       srcthetaeK = Thetae ( srctK, srcp/100.0, srcrh, srcw )
-      !~ Calculate temperature and pressure of the LCL
-      !  ---------------------------------------------
       
-      srctvk = VirtualTemperature(tK(srclev), w(srclev))
-      tlclK = TLCL ( srctvk, rh(srclev) ) !LCL based on virtual temperature instead of dry air temperature, modified by Zhixiao
+      !~ Calculate height of the LCL, follow Bolton (1980) Eq 22
+      tlclk = TLCL ( tK(srclev), rh(srclev))
+      ZLCL = hgt(srclev) + Cp/g * (tk(srclev)-tlclk)
       
-      plcl  = p(srclev) * ( (tlclK/tK(srclev))**(Cp/Rd) )
-      lcllev = -1
-      flag=.false. 
-      DO k=sfc,nz !zhixiao search LCL layer
-         IF (p (k) <= plcl) THEN
-             lcllev = k
-             flag=.true.
-         END IF
-         IF (flag) EXIT
-      END DO
-      flag=.false.
       !~ Now lift the parcel
       !  -------------------
    
@@ -637,7 +623,7 @@ CONTAINS
       pw    = srcw
       wflag = .false.
       DO k  = srclev, nz
-         IF ( p (k) <= plcl ) THEN
+         IF ( hgt (k) >= ZLCL ) THEN
    
             !~ The first level after we pass the LCL, we're still going to
             !~ lift the parcel dry adiabatically, as we haven't added the
@@ -744,12 +730,6 @@ CONTAINS
    
       END DO
       
-      ! Interpolate precise LCL height, created by Zhixiao
-      IF ( lcllev > 0 ) THEN
-         ! Correct lcl levs, created by Zhixiao
-         ZLCL = hgt(lcllev)
-      END IF
-      
       !~ Add up the buoyancies, find the LFC
       !  -----------------------------------
       flag = .false. ! flag for higherst lfc
@@ -760,7 +740,7 @@ CONTAINS
       DO k = sfc, nz !zhixiao
          !~ We are buoyant now - passed the lowest LFC
          !  -----------------------------------
-         IF (buoy (k) > REAL (0) .and. hgt (k) >= ZLCL .and. (.not.flag)) THEN !zhixiao
+         IF (buoy (k) > REAL (0) .and. hgt(k) >= ZLCL .and. (.not.flag)) THEN !zhixiao
             lfclevhigh = k
             lfclevlow = k - 1
             flag = .true. ! lfc recorded
@@ -781,15 +761,13 @@ CONTAINS
       ! Interpolate precise LFC height, created by Zhixiao
       IF ( lfclevhigh > 0 ) THEN
          ! Correct lfc levs
-         IF (lfclevlow == 0 .or. buoy(lfclevlow) >= REAL(0)) THEN
-             lfclevlow = lfclevhigh !lfc is the initial parcel level or lfc overlaps with lcl
-             ZLFC = hgt(lFClevhigh)
-         END IF
-         IF (buoy(lfclevlow) == REAL(0) .and. buoy(lfclevhigh) > REAL(0)) THEN
-             lfclevhigh = lfclevlow
-             ZLFC = hgt(lFClevlow) ! lfc precisely matches input level
-         END IF
-         IF (lfclevhigh > lfclevlow) THEN
+         IF (lfclevlow == 0) THEN
+             ZLFC = hgt(lfclevhigh)!lfc is the initial parcel level
+         ELSE IF (hgt(lfclevlow)<= ZLCL .and. buoy(lfclevlow) >= REAL(0)) THEN
+             ZLFC = ZLCL ! lfc=lcl
+         ELSE IF (buoy(lfclevlow) == REAL(0) .and. buoy(lfclevhigh) > REAL(0)) THEN
+             ZLFC = hgt(lfclevlow) ! lfc precisely matches input level
+         ELSE IF (lfclevhigh > lfclevlow) THEN
              ZLFC = hgt(lfclevlow) + (hgt(lfclevhigh)-hgt(lfclevlow))/(buoy(lfclevhigh)-buoy(lfclevlow)) * (REAL(0)-buoy(lfclevlow))
          END IF
       END IF
@@ -798,10 +776,8 @@ CONTAINS
       IF ( ellevhigh > 0 ) THEN
          ! Correct EL lev
          IF (buoy(ellevhigh) == REAL(0)) THEN
-             ellevlow = ellevhigh !el precisely matches obs/model level
-             ZEL = hgt(ellevhigh)
-         END IF
-         IF (ellevhigh > ellevlow) THEN
+             ZEL = hgt(ellevhigh) !el precisely matches obs/model level
+         ELSE IF (ellevhigh > ellevlow) THEN
              ZEL = hgt(ellevlow) + (hgt(ellevhigh)-hgt(ellevlow))/(buoy(ellevhigh)-buoy(ellevlow)) * (REAL(0)-buoy(ellevlow))
          END IF
       END IF
@@ -812,11 +788,11 @@ CONTAINS
          CIN=REAL ( 0 )
          DO k = sfc+1, nz
             ! Compute CAPE between LFC to EL
-            IF ( hgt (k) >= ZLFC .and. hgt (k) <= ZEL) THEN
+            IF ( hgt (k) > ZLFC .and. hgt (k) < ZEL) THEN
                CAPE = CAPE + MAX ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
             END IF
             ! Compute CIN between LCL to LFC
-            IF ( hgt (k) >= ZLCL .and. hgt (k) <= ZLFC) THEN
+            IF ( hgt (k) > ZLCL .and. hgt (k) < ZLFC) THEN
                CIN  = CIN  + MIN ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
             END IF
          END DO
@@ -1748,6 +1724,91 @@ CONTAINS
     trapped = trapped / REAL ( 4 )
 
   END FUNCTION LLT_TrappedWave
+  
+    FUNCTION diag_map ( nz, nj, ni, tk, rh, p, hgt, sfc, cape, cin, zlcl, zlfc, zel, zmu,  &
+                        parcel ) result (ostat) 
+  
+      IMPLICIT NONE
+  
+      INTEGER, INTENT ( IN )  :: nz, nj, ni          
+      INTEGER, INTENT ( IN )  :: sfc         
+      REAL,    INTENT ( IN )  :: tk   ( nz, nj, ni ) 
+      REAL,    INTENT ( IN )  :: rh   ( nz, nj, ni ) 
+      REAL,    INTENT ( IN )  :: p    ( nz, nj, ni )   
+      REAL,    INTENT ( IN )  :: hgt  ( nz, nj, ni ) 
+      REAL,    INTENT ( OUT ) :: cape ( nj, ni )      
+      REAL,    INTENT ( OUT ) :: cin  ( nj, ni )       
+      REAL,    INTENT ( OUT ) :: zlcl ( nj, ni )       
+      REAL,    INTENT ( OUT ) :: zlfc ( nj, ni )        
+      REAL,    INTENT ( OUT ) :: zel  ( nj, ni )         
+      REAL,    INTENT ( OUT ) :: zmu  ( nj, ni )       
+      INTEGER                 :: ostat                                              
+      INTEGER, INTENT ( IN  ) :: parcel
+      
+      INTEGER                 :: i, j 
+                                                  
+      ostat = 0
+      DO i = 1, ni
+         DO j = 1, nj
+             ostat = Buoyancy (                         nz &
+                                     ,        tk(1:nz,j,i) &
+                                     ,        rh(1:nz,j,i) &
+                                     ,         p(1:nz,j,i) &
+                                     ,       hgt(1:nz,j,i) &
+                                     ,                 sfc & ! first level
+                                     ,           cape(j,i) &
+                                     ,            cin(j,i) &
+                                     ,           zlcl(j,i) &
+                                     ,           zlfc(j,i) &
+                                     ,            zel(j,i) &
+                                     ,           zmu(j,i)  &
+                                     ,              parcel ) ! most unstablke
+         END DO
+      END DO
+      ostat = 1
+      
+  END FUNCTION diag_map
+  
+  FUNCTION diag_row ( nz, ni, tk, rh, p, hgt, sfc, cape, cin, zlcl, zlfc, zel, zmu,  &
+                        parcel ) result (ostat) 
+  
+      IMPLICIT NONE
+  
+      INTEGER, INTENT ( IN )  :: nz, ni          
+      INTEGER, INTENT ( IN )  :: sfc         
+      REAL,    INTENT ( IN )  :: tk   ( nz, ni ) 
+      REAL,    INTENT ( IN )  :: rh   ( nz, ni ) 
+      REAL,    INTENT ( IN )  :: p    ( nz, ni )   
+      REAL,    INTENT ( IN )  :: hgt  ( nz, ni ) 
+      REAL,    INTENT ( OUT ) :: cape ( ni )      
+      REAL,    INTENT ( OUT ) :: cin  ( ni )       
+      REAL,    INTENT ( OUT ) :: zlcl ( ni )       
+      REAL,    INTENT ( OUT ) :: zlfc ( ni )        
+      REAL,    INTENT ( OUT ) :: zel  ( ni )         
+      REAL,    INTENT ( OUT ) :: zmu  ( ni )       
+      INTEGER                 :: ostat                                              
+      INTEGER, INTENT ( IN  ) :: parcel
+      
+      INTEGER                 :: i, j
+                                                  
+      ostat = 0
+      DO i = 1, ni
+         ostat = Buoyancy (                        nz &
+                                 ,        tk(1:nz, i) &
+                                 ,        rh(1:nz, i) &
+                                 ,         p(1:nz, i) &
+                                 ,       hgt(1:nz, i) &
+                                 ,                sfc & ! first level
+                                 ,            cape(i) &
+                                 ,             cin(i) &
+                                 ,           zlcl(i)  &
+                                 ,            zlfc(i) &
+                                 ,           zel(i)   &
+                                 ,            zmu(i)  &
+                                 ,             parcel ) ! most unstablke
+      END DO
+      ostat = 1
+  END FUNCTION diag_row
 
 END MODULE diag_functions
 #endif
