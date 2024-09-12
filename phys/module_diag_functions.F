@@ -31,24 +31,15 @@ CONTAINS
 
     ! Local
     ! -----
-    REAL, PARAMETER :: pq0=379.90516
-    REAL, PARAMETER :: a2=17.2693882
-    REAL, PARAMETER :: a3=273.16
-    REAL, PARAMETER :: a4=35.86
-    REAL, PARAMETER :: rhmin=1.
-    REAL :: q, qs
-    INTEGER :: i,j,k
+    REAL :: evapor, es
   
-    ! Following algorithms adapted from WRFPOST
-    ! May want to substitute with another later
     ! -----------------------------------------
-      q=qv/(1.0+qv)
-      qs=pq0/p*exp(a2*(t-a3)/(t-a4))
-      rh=100.*q/qs
+
+      evapor = p/((0.622/qv)+1.0);
+      es = 611.2*exp(17.67*(t-273.15)/(t-29.65));
+      rh=100.*evapor/es
       IF (rh .gt. 100.) THEN
         rh=100.
-      ELSE IF (rh .lt. rhmin) THEN
-        rh=rhmin
       ENDIF
 
   END FUNCTION calc_rh
@@ -377,7 +368,7 @@ CONTAINS
      !~ Variable declaration
      !  --------------------
      INTEGER, INTENT ( IN ) :: nz          !~ Number of vertical levels
-     REAL, INTENT ( IN )    :: qv   ( nz ) !~ Specific humidity in layer (kg/kg)
+     REAL, INTENT ( IN )    :: qv   ( nz ) !~ Water vapor mixing ratio in layer (kg/kg)
      REAL, INTENT ( IN )    :: qc   ( nz ) !~ Cloud water in layer (kg/kg)
      REAL, INTENT ( IN )    :: dz8w ( nz ) !~ Dist between vertical levels (m)
      REAL, INTENT ( IN )    :: rho  ( nz ) !~ Air density (kg/m^3)
@@ -388,7 +379,10 @@ CONTAINS
      !  ---------------------------
      Pwat=0
      DO k = 1, nz
-       Pwat = Pwat + (qv(k) + qc(k)) * dz8w(k) * rho(k)
+       !Based on AMS PWAT defination (https://glossary.ametsoc.org/wiki/Precipitable_water)
+        !PWAT is corrected as the column accumulated water vapor rather than water vapor + cloud water.
+        !Modified by Zhixiao
+        Pwat = Pwat + qv(k) * dz8w(k) * rho(k)
      ENDDO
              
   END FUNCTION Pwat
@@ -436,8 +430,8 @@ CONTAINS
   !~    to higher levels.                                                     ~!
   !~                                                                          ~!
   !!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!!
-    FUNCTION Buoyancy ( nz, tk, rh, p, hgt, sfc, cape, cin, zlfc, plfc, lidx,  &
-                        parcel ) result (ostat)
+    FUNCTION Buoyancy ( nz, tk, rh, p, hgt, sfc, cape, cin, zlcl, zlfc, zel, zmu,  &
+                        parcel ) result (ostat) !zhixiao
   
       IMPLICIT NONE
   
@@ -449,9 +443,10 @@ CONTAINS
       REAL,    INTENT ( IN )  :: hgt  ( nz ) !~ Height profile ( gpm )
       REAL,    INTENT ( OUT ) :: cape        !~ CAPE ( J kg^-1 )
       REAL,    INTENT ( OUT ) :: cin         !~ CIN  ( J kg^-1 )
+      REAL,    INTENT ( OUT ) :: zlcl        !~ LCL Height ( gpm ) zhixiao
       REAL,    INTENT ( OUT ) :: zlfc        !~ LFC Height ( gpm )
-      REAL,    INTENT ( OUT ) :: plfc        !~ LFC Pressure ( Pa )
-      REAL,    INTENT ( OUT ) :: lidx        !~ Lifted index
+      REAL,    INTENT ( OUT ) :: zel         !~ EL Height ( gpm )
+      REAL,    INTENT ( OUT ) :: zmu         !~ Most unstable parcel height ( gpm )
       INTEGER                 :: ostat       !~ Function return status
                                              !~ Nonzero is bad.
 
@@ -463,10 +458,12 @@ CONTAINS
       !  -------------------------
       REAL                    :: ws   ( nz ) !~ Saturation mixing ratio
       REAL                    :: w    ( nz ) !~ Mixing ratio
+      REAL                    :: etheta( nz )!~ Equivalent potential temperature !zhixiao
       REAL                    :: dTvK ( nz ) !~ Parcel / ambient Tv difference
       REAL                    :: buoy ( nz ) !~ Buoyancy
       REAL                    :: tlclK       !~ LCL temperature ( K )
       REAL                    :: plcl        !~ LCL pressure ( Pa )
+      REAL                    :: pel         !~ EL pressure ( Pa ) !zhixiao
       REAL                    :: nbuoy       !~ Negative buoyancy
       REAL                    :: pbuoy       !~ Positive buoyancy
   
@@ -481,6 +478,7 @@ CONTAINS
       REAL                    :: srcthetaeK  !~ Source parcel theta-e ( K )
       INTEGER                 :: srclev      !~ Level of the source parcel
       REAL                    :: spdiff      !~ Pressure difference
+      REAL                    :: srce        !~ Equivalent potential temperature ( K )
    
       !~ Parcel variables
       !  ----------------
@@ -492,14 +490,18 @@ CONTAINS
       !~ Other utility variables
       !  -----------------------
       INTEGER                 :: i, j, k    !~ Dummy iterator
-      INTEGER                 :: lfclev     !~ Level of LFC
+      INTEGER                 :: lfclevhigh !~ Closest higher Level of precise LFC, created by Zhixiao
+      INTEGER                 :: lfclevlow  !~ Closest lower Level of precise LFC, created by Zhixiao
+      INTEGER                 :: ellevhigh  !~ Closest higher Level of precise EL, created by Zhixiao
+      INTEGER                 :: ellevlow   !~ Closest lower Level of precise EL, created by Zhixiao
       INTEGER                 :: prcl       !~ Internal parcel type indicator
       INTEGER                 :: mlev       !~ Level for ML calculation
       INTEGER                 :: lyrcnt     !~ Number of layers in mean layer
       LOGICAL                 :: flag       !~ Dummy flag
       LOGICAL                 :: wflag      !~ Saturation flag
       REAL                    :: freeze     !~ Water loading multiplier
-      REAL                    :: pdiff      !~ Pressure difference between levs 
+      REAL                    :: pdiff      !~ Pressure difference between levs
+      REAL                    :: hdiff      !~ Height difference between levs 
       REAL                    :: pm, pu, pd !~ Middle, upper, lower pressures
       REAL                    :: lidxu      !~ Lifted index at upper level
       REAL                    :: lidxd      !~ Lifted index at lower level
@@ -515,13 +517,15 @@ CONTAINS
       REAL                    :: RUNDEF
          PARAMETER ( RUNDEF = -9.999E30 )
   
-      !~ Initialize variables
+      !~ Initialize variables zhixiao
       !  --------------------
       ostat  = 0
-      CAPE   = REAL ( 0 )
-      CIN    = REAL ( 0 )
+      CAPE   = RUNDEF
+      CIN    = RUNDEF
       ZLFC   = RUNDEF
-      PLFC   = RUNDEF
+      ZLCL   = RUNDEF
+      ZEL    = RUNDEF
+      ZMU    = RUNDEF
   
       !~ Look for submitted parcel definition
       !~ 1 = Most unstable
@@ -549,6 +553,8 @@ CONTAINS
       DO k = sfc, nz
         ws  ( k )   = SaturationMixingRatio ( tK(k), p(k) )
         w   ( k )   = ( rh(k)/100.0 ) * ws ( k )
+        !thetav(k)   = Theta ( VirtualTemperature ( tK (k), w (k) ), p(k)/100.0 )
+        etheta(k)   = Thetae( tK(k), p(k)/100.0, rh(k), w(k) ) !zhixiao
       END DO
   
       srclev      = sfc
@@ -558,32 +564,32 @@ CONTAINS
       srcws       = ws    ( sfc )
       srcw        = w     ( sfc )
       srctheta    = Theta ( tK(sfc), p(sfc)/100.0 )
+      srce        = etheta (sfc) !zhixiao
    
       !~ Compute the profile mixing ratio.  If the parcel is the MU parcel,
-      !~ define our parcel to be the most unstable parcel within the lowest
-      !~ 180 mb.
       !  -------------------------------------------------------------------
       mlev = sfc + 1
-      DO k = sfc + 1, nz
+      DO k = sfc, nz !zhixiao
    
          !~ Identify the last layer within 100 hPa of the surface
          !  -----------------------------------------------------
          pdiff = ( p (sfc) - p (k) ) / REAL ( 100 )
          IF ( pdiff <= REAL (100) ) mlev = k
 
-         !~ If we've made it past the lowest 180 hPa, exit the loop
+         !~ If we've made it past the lowest 500 hPa, exit the loop zhixiao
          !  -------------------------------------------------------
-         IF ( pdiff >= REAL (180) ) EXIT
+         IF ( p(k) <= REAL (50000) ) EXIT
 
          IF ( prcl == 1 ) THEN
             !IF ( (p(k) > 70000.0) .and. (w(k) > srcw) ) THEN
-            IF ( (w(k) > srcw) ) THEN
+            IF (etheta(k) > srce)  THEN
                srctheta = Theta ( tK(k), p(k)/100.0 )
                srcw = w ( k )
                srclev  = k
                srctK   = tK ( k )
                srcrh   = rh ( k )
                srcp    = p  ( k )
+               srce = etheta(k)
             END IF
          END IF
    
@@ -605,12 +611,11 @@ CONTAINS
       END IF
    
       srcthetaeK = Thetae ( srctK, srcp/100.0, srcrh, srcw )
-   
-      !~ Calculate temperature and pressure of the LCL
-      !  ---------------------------------------------
-      tlclK = TLCL ( tK(srclev), rh(srclev) )
-      plcl  = p(srclev) * ( (tlclK/tK(srclev))**(Cp/Rd) )
-   
+      
+      !~ Calculate height of the LCL, follow Bolton (1980) Eq 22
+      tlclk = TLCL ( tK(srclev), rh(srclev))
+      ZLCL = hgt(srclev) + Cp/g * (tk(srclev)-tlclk)
+      
       !~ Now lift the parcel
       !  -------------------
    
@@ -618,7 +623,7 @@ CONTAINS
       pw    = srcw
       wflag = .false.
       DO k  = srclev, nz
-         IF ( p (k) <= plcl ) THEN
+         IF ( hgt (k) >= ZLCL ) THEN
    
             !~ The first level after we pass the LCL, we're still going to
             !~ lift the parcel dry adiabatically, as we haven't added the
@@ -652,19 +657,20 @@ CONTAINS
                !  ----------------------------------------------------------
                ptvK  = VirtualTemperature ( ptK, pw )
                tvK   = VirtualTemperature ( tK (k), w (k) )
-   
+               
+               ! Use simple assumption. Turn off water loading and freezing impact for agreeing with other offline dignostic packages
                !~ Modification to account for water loading
                !  -----------------------------------------
-               freeze = 0.033 * ( 263.15 - pTvK )
-               IF ( freeze > 1.0 ) freeze = 1.0
-               IF ( freeze < 0.0 ) freeze = 0.0
+               !freeze = 0.033 * ( 263.15 - pTvK )
+               !IF ( freeze > 1.0 ) freeze = 1.0
+               !IF ( freeze < 0.0 ) freeze = 0.0
    
                !~ Approximate how much of the water vapor has condensed out
                !~ of the parcel at this level
                !  ---------------------------------------------------------
-               freeze = freeze * 333700.0 * ( srcw - pw ) / 1005.7
+               !freeze = freeze * 333700.0 * ( srcw - pw ) / 1005.7
    
-               pTvK = pTvK - pTvK * ( srcw - pw ) + freeze
+               !pTvK = pTvK - pTvK * ( srcw - pw ) + freeze
                dTvK ( k ) = ptvK - tvK
                buoy ( k ) = g * ( dTvK ( k ) / tvK )
    
@@ -723,97 +729,79 @@ CONTAINS
   !          WRITE ( *,'(I15,6F15.3)' )k,p(k)/100.,ptK,pw*1000.,ptvK,tvK,buoy(k)
    
       END DO
-   
+      
       !~ Add up the buoyancies, find the LFC
       !  -----------------------------------
-      flag   = .false.
-      lfclev = -1
-      nbuoy  = REAL ( 0 )
-      pbuoy = REAL ( 0 )
-      DO k = sfc + 1, nz
-         IF ( tK (k) < 253.15 ) EXIT
-         CAPE = CAPE + MAX ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
-         CIN  = CIN  + MIN ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
-   
-         !~ If we've already passed the LFC
-         !  -------------------------------
-         IF ( flag .and. buoy (k) > REAL (0) ) THEN
-            pbuoy = pbuoy + buoy (k)
-         END IF
-   
-         !~ We are buoyant now - passed the LFC
+      flag = .false. ! flag for higherst lfc
+      lfclevhigh = -1
+      lfclevlow = -1
+      ellevhigh = -1
+      ellevlow = -1
+      DO k = sfc, nz !zhixiao
+         !~ We are buoyant now - passed the lowest LFC
          !  -----------------------------------
-         IF ( .not. flag .and. buoy (k) > REAL (0) .and. p (k) < plcl ) THEN
-            flag = .true.
-            pbuoy = pbuoy + buoy (k)
-            lfclev = k
+         IF (buoy (k) > REAL (0) .and. hgt(k) >= ZLCL .and. (.not.flag)) THEN !zhixiao
+            lfclevhigh = k
+            lfclevlow = k - 1
+            flag = .true. ! lfc recorded
          END IF
-   
-         !~ If we think we've passed the LFC, but encounter a negative layer
-         !~ start adding it up.
+         !~ Find the highest EL above LFC
          !  ----------------------------------------------------------------
-         IF ( flag .and. buoy (k) < REAL (0) ) THEN
-            nbuoy = nbuoy + buoy (k)
-
-            !~ If the accumulated negative buoyancy is greater than the
-            !~ positive buoyancy, then we are capped off.  Got to go higher
-            !~ to find the LFC. Reset positive and negative buoyancy summations
-            !  ----------------------------------------------------------------
-            IF ( ABS (nbuoy) > pbuoy ) THEN
-               flag   = .false.
-               nbuoy  = REAL ( 0 )
-               pbuoy  = REAL ( 0 )
-               lfclev = -1
+         IF (k>1) THEN
+            IF (flag .and. buoy (k) <= REAL (0) .and. buoy (k-1) > REAL (0)) THEN
+                ellevhigh = k
+                ellevlow = k - 1
             END IF
          END IF
-
+         IF (buoy (k) < REAL (0) .and. flag) THEN !zhixiao
+            flag = .false. !Thin inversion layers are above lfc. Reverse the flag for removing recorded lfc, and search for the highest lfc
+         END IF
       END DO
-
-      !~ Calculate lifted index by interpolating difference between
-      !~ parcel and ambient Tv to 500mb.
-      !  ----------------------------------------------------------
-      DO k = sfc + 1, nz
-
-         pm = 50000.
-         pu = p ( k )
-         pd = p ( k - 1 )
-
-         !~ If we're already above 500mb just set lifted index to 0.
-         !~ --------------------------------------------------------
-         IF ( pd .le. pm ) THEN
-            lidx = 0.
-            EXIT
-   
-         ELSEIF ( pu .le. pm .and. pd .gt. pm) THEN
-
-            !~ Found trapping pressure: up, middle, down.
-            !~ We are doing first order interpolation.  
-            !  ------------------------------------------
-            lidxu = -dTvK ( k ) * ( pu / 100000. ) ** (Rd/Cp)
-            lidxd = -dTvK ( k-1 ) * ( pd / 100000. ) ** (Rd/Cp)
-            lidx = ( lidxu * (pm-pd) + lidxd * (pu-pm) ) / (pu-pd)
-            EXIT
-
-         ENDIF
-
-      END DO
-   
-      !~ Assuming the the LFC is at a pressure level for now
-      !  ---------------------------------------------------
-      IF ( lfclev > 0 ) THEN
-         PLFC = p   ( lfclev )
-         ZLFC = hgt ( lfclev )
+      
+      ! Interpolate precise LFC height, created by Zhixiao
+      IF ( lfclevhigh > 0 ) THEN
+         ! Correct lfc levs
+         IF (lfclevlow == 0) THEN
+             ZLFC = hgt(lfclevhigh)!lfc is the initial parcel level
+         ELSE IF (hgt(lfclevlow)<= ZLCL .and. buoy(lfclevlow) >= REAL(0)) THEN
+             ZLFC = ZLCL ! lfc=lcl
+         ELSE IF (buoy(lfclevlow) == REAL(0) .and. buoy(lfclevhigh) > REAL(0)) THEN
+             ZLFC = hgt(lfclevlow) ! lfc precisely matches input level
+         ELSE IF (lfclevhigh > lfclevlow) THEN
+             ZLFC = hgt(lfclevlow) + (hgt(lfclevhigh)-hgt(lfclevlow))/(buoy(lfclevhigh)-buoy(lfclevlow)) * (REAL(0)-buoy(lfclevlow))
+         END IF
       END IF
-   
-      IF ( PLFC /= PLFC .OR. PLFC < REAL (0) ) THEN
-         PLFC = REAL ( -1 )
-         ZLFC = REAL ( -1 )
+      
+      ! Interpolate precise EL height, created by Zhixiao
+      IF ( ellevhigh > 0 ) THEN
+         ! Correct EL lev
+         IF (buoy(ellevhigh) == REAL(0)) THEN
+             ZEL = hgt(ellevhigh) !el precisely matches obs/model level
+         ELSE IF (ellevhigh > ellevlow) THEN
+             ZEL = hgt(ellevlow) + (hgt(ellevhigh)-hgt(ellevlow))/(buoy(ellevhigh)-buoy(ellevlow)) * (REAL(0)-buoy(ellevlow))
+         END IF
       END IF
-   
-      IF ( CAPE /= CAPE ) cape = REAL ( 0 )
-   
-      IF ( CIN  /= CIN  ) cin  = REAL ( 0 )
+      
+      ! Refine CAPE and CIN defination, modified by Zhixiao
+      IF (ellevhigh > 0) THEN 
+         CAPE=REAL ( 0 ) !Initialization before integration
+         CIN=REAL ( 0 )
+         DO k = sfc+1, nz
+            ! Compute CAPE between LFC to EL
+            IF ( hgt (k) > ZLFC .and. hgt (k) < ZEL) THEN
+               CAPE = CAPE + MAX ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
+            END IF
+            ! Compute CIN between LCL to LFC
+            IF ( hgt (k) > ZLCL .and. hgt (k) < ZLFC) THEN
+               CIN  = CIN  + MIN ( buoy (k), 0.0 ) * ( hgt (k) - hgt (k-1) )
+            END IF
+         END DO
+      END IF
 
+      ZMU = hgt ( srclev )
+
+      IF ( CAPE /= CAPE ) cape = RUNDEF
+      IF ( CIN  /= CIN  ) cin  = RUNDEF
       !~ Chirp
       !  -----
   !       WRITE ( *,* ) ' CAPE: ', cape, ' CIN:  ', cin
@@ -1736,6 +1724,91 @@ CONTAINS
     trapped = trapped / REAL ( 4 )
 
   END FUNCTION LLT_TrappedWave
+  
+    FUNCTION diag_map ( nz, nj, ni, tk, rh, p, hgt, sfc, cape, cin, zlcl, zlfc, zel, zmu,  &
+                        parcel ) result (ostat) 
+  
+      IMPLICIT NONE
+  
+      INTEGER, INTENT ( IN )  :: nz, nj, ni          
+      INTEGER, INTENT ( IN )  :: sfc         
+      REAL,    INTENT ( IN )  :: tk   ( nz, nj, ni ) 
+      REAL,    INTENT ( IN )  :: rh   ( nz, nj, ni ) 
+      REAL,    INTENT ( IN )  :: p    ( nz, nj, ni )   
+      REAL,    INTENT ( IN )  :: hgt  ( nz, nj, ni ) 
+      REAL,    INTENT ( OUT ) :: cape ( nj, ni )      
+      REAL,    INTENT ( OUT ) :: cin  ( nj, ni )       
+      REAL,    INTENT ( OUT ) :: zlcl ( nj, ni )       
+      REAL,    INTENT ( OUT ) :: zlfc ( nj, ni )        
+      REAL,    INTENT ( OUT ) :: zel  ( nj, ni )         
+      REAL,    INTENT ( OUT ) :: zmu  ( nj, ni )       
+      INTEGER                 :: ostat                                              
+      INTEGER, INTENT ( IN  ) :: parcel
+      
+      INTEGER                 :: i, j 
+                                                  
+      ostat = 0
+      DO i = 1, ni
+         DO j = 1, nj
+             ostat = Buoyancy (                         nz &
+                                     ,        tk(1:nz,j,i) &
+                                     ,        rh(1:nz,j,i) &
+                                     ,         p(1:nz,j,i) &
+                                     ,       hgt(1:nz,j,i) &
+                                     ,                 sfc & ! first level
+                                     ,           cape(j,i) &
+                                     ,            cin(j,i) &
+                                     ,           zlcl(j,i) &
+                                     ,           zlfc(j,i) &
+                                     ,            zel(j,i) &
+                                     ,           zmu(j,i)  &
+                                     ,              parcel ) ! most unstablke
+         END DO
+      END DO
+      ostat = 1
+      
+  END FUNCTION diag_map
+  
+  FUNCTION diag_row ( nz, ni, tk, rh, p, hgt, sfc, cape, cin, zlcl, zlfc, zel, zmu,  &
+                        parcel ) result (ostat) 
+  
+      IMPLICIT NONE
+  
+      INTEGER, INTENT ( IN )  :: nz, ni          
+      INTEGER, INTENT ( IN )  :: sfc         
+      REAL,    INTENT ( IN )  :: tk   ( nz, ni ) 
+      REAL,    INTENT ( IN )  :: rh   ( nz, ni ) 
+      REAL,    INTENT ( IN )  :: p    ( nz, ni )   
+      REAL,    INTENT ( IN )  :: hgt  ( nz, ni ) 
+      REAL,    INTENT ( OUT ) :: cape ( ni )      
+      REAL,    INTENT ( OUT ) :: cin  ( ni )       
+      REAL,    INTENT ( OUT ) :: zlcl ( ni )       
+      REAL,    INTENT ( OUT ) :: zlfc ( ni )        
+      REAL,    INTENT ( OUT ) :: zel  ( ni )         
+      REAL,    INTENT ( OUT ) :: zmu  ( ni )       
+      INTEGER                 :: ostat                                              
+      INTEGER, INTENT ( IN  ) :: parcel
+      
+      INTEGER                 :: i, j
+                                                  
+      ostat = 0
+      DO i = 1, ni
+         ostat = Buoyancy (                        nz &
+                                 ,        tk(1:nz, i) &
+                                 ,        rh(1:nz, i) &
+                                 ,         p(1:nz, i) &
+                                 ,       hgt(1:nz, i) &
+                                 ,                sfc & ! first level
+                                 ,            cape(i) &
+                                 ,             cin(i) &
+                                 ,           zlcl(i)  &
+                                 ,            zlfc(i) &
+                                 ,           zel(i)   &
+                                 ,            zmu(i)  &
+                                 ,             parcel ) ! most unstablke
+      END DO
+      ostat = 1
+  END FUNCTION diag_row
 
 END MODULE diag_functions
 #endif

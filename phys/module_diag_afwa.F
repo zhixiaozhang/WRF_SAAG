@@ -178,92 +178,107 @@ CONTAINS
         ENDDO
       ENDIF
     ENDIF
-
-    ! 3-D arrays for moisture variables
+   
     ! ---------------------------------
+    ! Do all the diagnostics at aux2/hist intervals, modified by Zhixiao
+    IF ( is_output_timestep ) THEN
+      ! Calculate customized VIL by Zhixiao
+      ! ------------------------------------------------------------
+      IF ( config_flags % afwa_vil_opt == 1 ) THEN
+        write ( message, * ) 'Calculating VIL'
+        CALL wrf_debug( 100 , message )
+        CALL vert_int_liquid_diagnostics (grid % afwa_lwp       &
+                             , grid % afwa_iwp                  &
+                             , grid % fzlev                     &
+                             , grid % t_phy                     &
+                             , moist(:,:,:,P_QC)                &
+                             , moist(:,:,:,P_QI)                &
+                             , moist(:,:,:,P_QR)                &
+                             , moist(:,:,:,P_QS)                &
+                             , moist(:,:,:,P_QG)                &
+                             , dz8w                             &
+                             , rho                              &
+                             , grid % z                         &
+                             , ids, ide, jds, jde, kds, kde     &
+                             , ims, ime, jms, jme, kms, kme     &
+                             , ips, ipe, jps, jpe, kps, kpe )
+      ! Calculate precipitable water, corrected by zhixiao
+      ! ----------------------------
+        nz=kme-kms+1
+        DO i=ims,ime
+	  DO j=jms,jme
+	     grid % afwa_pwat ( i, j ) = Pwat( nz,                  &
+					    moist(i,kms:kme,j,P_QV), &
+					    moist(i,kms:kme,j,P_QC), &
+					    dz8w(i,kms:kme,j),   &
+					    rho(i,kms:kme,j) )
+	  ENDDO
+        ENDDO
+      ENDIF  ! afwa_vil_opt ==1
 
-    IF ( F_QV ) THEN
+     ! Calculate total pressure for buoy module zhixiao
+     ! -------------- 
       DO i=ims, ime
         DO k=kms, kme
-          DO j=jms, jme
-            qvapr(i,k,j) = moist(i,k,j,P_QV)
-          ENDDO
+	  DO j=jms, jme
+	    ptot(i,k,j)=grid%pb(i,k,j)+grid%p(i,k,j)
+	  ENDDO
         ENDDO
       ENDDO
-    END IF
-    IF ( F_QR ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            qrain(i,k,j) = moist(i,k,j,P_QR)
+
+      ! Calculate relative humidity for buoy module zhixiao
+      ! ---------------------------
+      IF ( F_QV ) THEN
+        DO i=ims,ime
+          DO k=kms,kme    
+            DO j=jms,jme
+              rh(i,k,j)=calc_rh(ptot(i,k,j),grid%t_phy(i,k,j),moist(i,k,j,P_QV))
+            ENDDO
           ENDDO
         ENDDO
-      ENDDO
-    END IF
-    IF ( F_QS ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            qsnow(i,k,j) = moist(i,k,j,P_QS)
+      ELSE
+        CALL wrf_debug ( DEBUG_LEVEL, 'Option rh requires: QV' )
+      END IF
+
+      ! Calculate customized buoyancy parameters by zhixiao
+      ! ------------------------------
+      IF ( config_flags % afwa_buoy_opt == 1 ) THEN
+        nz=kme-kms+1
+
+        ! Calculate buoyancy for most unstable parcel
+        ! -------------------------------------
+        DO j = jms, jme
+          DO i = ims, ime
+            ostat = Buoyancy (                                   nz &
+                                     ,      grid%t_phy(i,kms:kme,j) &
+                                     ,              rh(i,kms:kme,j) &
+                                     ,            ptot(i,kms:kme,j) &
+                                     ,        grid % z(i,kms:kme,j) &
+                                     ,                            1 &
+                                     ,        grid % afwa_cape_mu(i,j) &
+                                     ,         grid % afwa_cin_mu(i,j) &
+                                     ,         grid % afwa_lcl(i,j)  &
+                                     ,         grid % afwa_zlfc(i,j) &
+                                     ,         grid % afwa_el(i,j)   &
+                                     ,         grid % afwa_lpl(i,j)  &
+                                     ,                        1 ) ! start from max theta-e parcel zhixiao
           ENDDO
         ENDDO
-      ENDDO
-    END IF
-    IF ( F_QG ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            qgrpl(i,k,j) = moist(i,k,j,P_QG)
-          ENDDO
-        ENDDO
-      ENDDO
-    END IF
-    IF ( F_QC ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            qcloud(i,k,j) = moist(i,k,j,P_QC)
-          ENDDO
-        ENDDO
-      ENDDO
-    END IF
-    IF ( F_QI ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            qice(i,k,j) = moist(i,k,j,P_QI)
-          ENDDO
-        ENDDO
-      ENDDO
-    END IF
-    IF ( F_QNC ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            ncloud(i,k,j) = scalar(i,k,j,P_QNC)
-          ENDDO
-        ENDDO
-      ENDDO
-    END IF
-    IF ( F_QNG ) THEN
-      DO i=ims, ime
-        DO k=kms, kme
-          DO j=jms, jme
-            ngraup(i,k,j) = scalar(i,k,j,P_QNG)
-          ENDDO
-        ENDDO
-      ENDDO
-    END IF
+      ENDIF  ! afwa_buoy_opt == 1
+      
+    ! Move all left diagnostics to afwa_severe_opt. Setting afwa_severe_opt == 0 can disable all left calculations for saving computing time
+    ! Designed by Zhixiao
+    ! ------------------------------------------------------------
+    IF ( config_flags % afwa_severe_opt == 1 ) THEN
+       qvapr = moist(:,:,:,P_QV)
+       qrain = moist(:,:,:,P_QR)
+       qsnow = moist(:,:,:,P_QS)
+       qgrpl = moist(:,:,:,P_QG)
+       qcloud = moist(:,:,:,P_QC)
+       qice = moist(:,:,:,P_QI)
+       ncloud = scalar(:,:,:,P_QNC)
+       ngraup = scalar(:,:,:,P_QNG)
     
-    ! Total pressure
-    ! -------------- 
-    DO i=ims, ime
-      DO k=kms, kme
-        DO j=jms, jme
-          ptot(i,k,j)=grid%pb(i,k,j)+grid%p(i,k,j)
-        ENDDO
-      ENDDO
-    ENDDO
 
     ! ZAGL (height above ground)
     ! --------------------------
@@ -275,19 +290,7 @@ CONTAINS
       ENDDO
     ENDDO
 
-    ! Calculate relative humidity
-    ! ---------------------------
-    IF ( F_QV ) THEN
-      DO i=ims,ime
-        DO k=kms,kme    
-          DO j=jms,jme
-            rh(i,k,j)=calc_rh(ptot(i,k,j),grid%t_phy(i,k,j), qvapr(i,k,j))
-          ENDDO
-        ENDDO
-      ENDDO
-    ELSE
-      CALL wrf_debug ( DEBUG_LEVEL, 'Option rh requires: QV' )
-    END IF
+    
     IF ( F_QV .AND. F_QC .AND. F_QI ) THEN
       DO i=ims,ime
         DO k=kms,kme    
@@ -302,29 +305,8 @@ CONTAINS
 
     ! Time-step precipitation (convective + nonconvective)
     ! --------------------------------------------------------------
-    DO i=ims,ime
-      DO j=jms,jme
-        grid % afwa_precip(i,j) = grid%raincv(i,j) + grid%rainncv(i,j)
-        grid % afwa_totprecip(i,j) = grid%rainc(i,j) + grid%rainnc(i,j)
-      ENDDO
-    ENDDO
-
-    ! Calculate precipitable water
-    ! ----------------------------
-    IF ( F_QV .AND. F_QC ) THEN
-      nz=kme-kms+1
-      DO i=ims,ime
-        DO j=jms,jme
-          grid % afwa_pwat ( i, j ) = Pwat( nz,                  &
-                                            qvapr(i,kms:kme,j),  &
-                                            qcloud(i,kms:kme,j), &
-                                            dz8w(i,kms:kme,j),   &
-                                            rho(i,kms:kme,j) )
-        ENDDO
-      ENDDO
-    ELSE
-      CALL wrf_debug ( DEBUG_LEVEL, 'Option pwat requires: QV, QC' )
-    END IF
+    grid % afwa_precip = grid%raincv + grid%rainncv
+    grid % afwa_totprecip = grid%rainc + grid%rainnc
 
     ! After each history dump, reset max/min value arrays
     ! ----------------------------------------------------------------------
@@ -581,23 +563,6 @@ CONTAINS
                              , ips, ipe, jps, jpe, kps, kpe )
     ENDIF  ! afwa_ptype_opt == 1
   
-    ! --------------------------------------------------------------
-    ! The following packages are calculated only on output timesteps
-    ! --------------------------------------------------------------
-    IF ( is_output_timestep ) THEN      
-
-      ! Calculate mean sea level pressure
-      ! ---------------------------------
-      DO j = jms, jme
-        DO i = ims, ime
-          grid % afwa_mslp  ( i, j ) =   MSLP ( grid % ht ( i, j )           & 
-                                              , grid % psfc ( i, j )         &
-                                              , grid % z ( i, kms, j )       & 
-                                              , qvapr ( i, kms, j )          &  
-                                              , grid % t_phy ( i, kms, j ) )
-        ENDDO
-      ENDDO
-
       ! Calculate 10 meter winds
       ! ------------------------
       DO i=ims,ime
@@ -614,61 +579,6 @@ CONTAINS
           tv2m(i,j)=grid%t2(i,j) * (1 + 0.61 * grid%q2(i,j))
         ENDDO
       ENDDO
- 
-      ! Calculate buoyancy parameters.
-      ! ------------------------------
-      IF ( config_flags % afwa_buoy_opt == 1 ) THEN
-        nz = k_end - k_start + 1
-
-        ! Calculate buoyancy for surface parcel
-        ! -------------------------------------
-        DO j = jts, jte
-          DO i = its, ite
-            ostat = Buoyancy (                                   nz &
-                                     ,      grid%t_phy(i,kms:kme,j) &
-                                     ,              rh(i,kms:kme,j) &
-                                     ,            ptot(i,kms:kme,j) &
-                                     ,        grid % z(i,kms:kme,j) &
-                                     ,                            1 &
-                                     ,        grid % afwa_cape(i,j) &
-                                     ,         grid % afwa_cin(i,j) &
-                                     ,                     zlfc_msl &
-                                     ,        grid % afwa_plfc(i,j) &
-                                     ,        grid % afwa_lidx(i,j) &
-                                     ,                        3 ) !Surface
-        
-            ! Subtract terrain height to convert ZLFC from MSL to AGL
-            ! -------------------------------------------------------
-            IF ( zlfc_msl .ge. grid % ht ( i, j ) ) THEN
-              grid % afwa_zlfc ( i, j ) = zlfc_msl - grid % ht ( i, j )
-            ELSE
-              grid % afwa_zlfc( i, j ) = -1.
-            ENDIF
-
-            ! Add 273.15 to lifted index per some standard I don't understand
-            ! ---------------------------------------------------------------
-            IF ( grid % afwa_lidx ( i, j ) .ne. 999. ) THEN
-              grid % afwa_lidx ( i, j ) = grid % afwa_lidx ( i, j ) + 273.15
-            ENDIF
- 
-            ! Calculate buoyancy again for most unstable layer
-            ! ------------------------------------------------
-            ostat = Buoyancy (                                   nz &
-                                     ,      grid%t_phy(i,kms:kme,j) &
-                                     ,              rh(i,kms:kme,j) &
-                                     ,            ptot(i,kms:kme,j) &
-                                     ,        grid % z(i,kms:kme,j) &
-                                     ,                            1 &
-                                     ,     grid % afwa_cape_mu(i,j) &
-                                     ,      grid % afwa_cin_mu(i,j) &
-                                     ,                         dum1 &
-                                     ,                         dum2 &
-                                     ,                         dum3 &
-                                     ,                        1 ) !Most unstable
-        
-          ENDDO
-        ENDDO
-      ENDIF  ! afwa_buoy_opt == 1
 
       IF ( config_flags % afwa_therm_opt == 1 ) THEN
         write ( message, * ) 'Calculating thermal indices'
@@ -719,8 +629,7 @@ CONTAINS
       ! Calculate equivalent radar reflectivity factor (z_e) using 
       ! old RIP code (2004) if running radar or VIL packages.
       ! ----------------------------------------------------------
-      IF ( config_flags % afwa_radar_opt == 1 .or. &
-         config_flags % afwa_vil_opt == 1 ) THEN
+      IF ( config_flags % afwa_radar_opt == 1 )THEN
         write ( message, * ) 'Calculating Radar'
         CALL wrf_debug( 100 , message )
         CALL wrf_dbzcalc ( rho                                  &
@@ -732,7 +641,7 @@ CONTAINS
                              , ids, ide, jds, jde, kds, kde     &
                              , ims, ime, jms, jme, kms, kme     &
                              , ips, ipe, jps, jpe, kps, kpe )
-      ENDIF  ! afwa_radar_opt == 1 .or. afwa_vil_opt == 1
+      ENDIF  ! afwa_radar_opt == 1
 
       ! Calculate derived radar variables
       ! ---------------------------------
@@ -754,25 +663,6 @@ CONTAINS
                              , ims, ime, jms, jme, kms, kme     &
                              , ips, ipe, jps, jpe, kps, kpe )
       ENDIF  ! afwa_radar_opt == 1
-
-      ! Calculate VIL and reflectivity every history output timestep
-      ! ------------------------------------------------------------
-      IF ( config_flags % afwa_vil_opt == 1 ) THEN
-        write ( message, * ) 'Calculating VIL'
-        CALL wrf_debug( 100 , message )
-        CALL vert_int_liquid_diagnostics ( grid % vil           &
-                             , grid % radarvil                  &
-                             , grid % t_phy                     &
-                             , qrain                            &
-                             , qsnow                            &
-                             , qgrpl                            &
-                             , z_e                              &
-                             , dz8w                             &
-                             , rho                              &
-                             , ids, ide, jds, jde, kds, kde     &
-                             , ims, ime, jms, jme, kms, kme     &
-                             , ips, ipe, jps, jpe, kps, kpe )
-      ENDIF  ! afwa_vil_opt ==1 
 
       IF ( F_QR .AND. F_QC .AND. F_QNC ) THEN
         ! Calculate icing and freezing level
@@ -954,8 +844,10 @@ CONTAINS
       ELSE
         CALL wrf_debug ( DEBUG_LEVEL, 'Option cloud_diagnostics requires: QC, QI, QS' )
       END IF
+ 
+    ENDIF ! end afwa_severe_opt == 1
 
-    ENDIF  ! is_output_timestep
+    ENDIF  ! end is_output_timestep
 
   END SUBROUTINE afwa_diagnostics_driver
 
@@ -1217,6 +1109,7 @@ CONTAINS
                                        ,                 zlfc_msl &
                                        ,                plfc(i,j) &
                                        ,                lidx(i,j) &
+                                       ,                zlfc_msl  & !Adapt to customized buoyancy function output format, adjusted by zhixiao
                                        ,                        3 ) !Surface
 
           ! Add 273.15 to lifted index per some standard I don't understand
@@ -1305,16 +1198,19 @@ CONTAINS
   END SUBROUTINE severe_wx_diagnostics
 
 
-
-  SUBROUTINE vert_int_liquid_diagnostics ( vil                  &
-                             , radarvil                         &
+!zhixiao
+  SUBROUTINE vert_int_liquid_diagnostics (lwp                   &
+                             , iwp                              &
+                             , fzlev                            &
                              , t_phy                            &
+                             , qcloud                           &
+                             , qice                             &
                              , qrain                            &
                              , qsnow                            &
                              , qgrpl                            &
-                             , z_e                              &
                              , dz8w                             &
                              , rho                              &
+                             , z                                &
                              , ids, ide, jds, jde, kds, kde     &
                              , ims, ime, jms, jme, kms, kme     &
                              , ips, ipe, jps, jpe, kps, kpe )
@@ -1322,55 +1218,56 @@ CONTAINS
     INTEGER, INTENT(IN) :: ids, ide, jds, jde, kds, kde,        &
                            ims, ime, jms, jme, kms, kme,        &
                            ips, ipe, jps, jpe, kps, kpe
-
+!zhixiao
     REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),               &
          INTENT(IN) ::                                     rho  &
+                                              ,          qcloud &
+                                              ,          qice   &
                                               ,          qrain  &
                                               ,          qsnow  &
                                               ,          qgrpl  & 
                                               ,          t_phy  &
-                                              ,            z_e  & 
-                                              ,           dz8w
-
+                                              ,           dz8w  &
+                                              ,           z
+!zhixiao
     REAL, DIMENSION( ims:ime, jms:jme ),                        &
-         INTENT(INOUT) ::                                  vil  &
-                                              ,       radarvil
+         INTENT(INOUT) ::                             lwp       &
+                                              ,       iwp       &
+                                              ,       fzlev
+
 
     ! Local
     ! -----
     INTEGER :: i,j,k,ktime
 
-    ! Calculate vertically integrated liquid water (though its mostly not
-    ! "liquid" now is it?) [kg/m^2]
+    ! Calculate LWP IWP REFD FZLEV zhixiao
     ! -------------------------------------------------------------------
+    fzlev (ips:ipe,jps:jpe) = -999.        ! Arbitrary unset/initial value
     DO i = ips, MIN(ipe,ide-1)
     DO j = jps, MIN(jpe,jde-1)
-      vil (i,j) = 0.0
+      lwp (i,j) = 0.0
+      iwp (i,j) = 0.0
       DO k = kps, MIN(kpe,kde-1)
-        vil (i,j) =  vil (i,j) + &
-         (qrain (i,k,j) + &
-          qsnow (i,k,j) + &
-          qgrpl (i,k,j))  &
-          *dz8w (i,k,j) * rho(i,k,j)
+        lwp(i,j) = lwp(i,j)+(qcloud(i,k,j)+qrain(i,k,j))*dz8w(i,k,j)*rho(i,k,j)
+        iwp(i,j) = iwp(i,j)+(qice(i,k,j)+qsnow(i,k,j)+qgrpl(i,k,j))*dz8w(i,k,j)*rho(i,k,j) 
+        ! Freezing level calculation
+        ! --------------------------
+        IF (t_phy(i,k,j) .lt. 273.15) THEN
+           IF (fzlev (i,j) .eq. -999.) THEN  ! At freezing level
+              IF (k .ne. kps) THEN  ! If not at surface, interpolate.      
+                 fzlev (i,j) = z (i,k-1,j) + &
+                            ((273.15 - t_phy (i,k-1,j)) &
+                            /(t_phy (i,k,j) - t_phy (i,k-1,j))) &
+                            *(z (i,k,j) - z (i,k-1,j))
+              ELSE  ! If at surface, use first level.
+                 fzlev(i,j) = z (i,k,j) 
+              ENDIF
+           ENDIF
+        ENDIF
       ENDDO
     ENDDO
     ENDDO
-
-    ! Diagnose "radar-derived VIL" from equivalent radar reflectivity
-    ! radarVIL = (integral of LW*dz )/1000.0  (in kg/m^2)
-    ! LW = 0.00344 * z_e** (4/7)  in g/m^3
-    ! ---------------------------------------------------------------
-    DO i = ips, MIN(ipe,ide-1)
-    DO j = jps, MIN(jpe,jde-1)
-      radarvil (i,j) = 0.0
-      DO k = kps, MIN(kpe,kde-1)
-        radarvil (i,j) = radarvil (i,j) + &
-        0.00344 * z_e(i,k,j)**0.57143 &
-        *dz8w (i,k,j)/1000.0
-      END DO
-    END DO
-    END DO
-
+    
   END SUBROUTINE vert_int_liquid_diagnostics
 
 

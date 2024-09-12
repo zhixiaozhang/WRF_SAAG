@@ -27,26 +27,28 @@ rconfig   integer afwa_bad_data_check     namelist,afwa         1              0
 #state    real   WSPD10MAX        ij     misc        1         -      rh          "WSPD10MAX"      "WIND SPD MAX 10 M"                             "m s-1"
 #state    real   W_UP_MAX         ij     misc        1         -      rh          "W_UP_MAX"       "MAX Z-WIND UPDRAFT"                            "m s-1"
 #state    real   W_DN_MAX         ij     misc        1         -      rh          "W_DN_MAX"       "MAX Z-WIND DOWNDRAFT"                          "m s-1"
-#state    real   REFD_MAX         ij     misc        1         -      rh02       "REFD_MAX"       "MAX DERIVED RADAR REFL"                        "dbZ"
+#state    real   REFD_MAX         ij     misc        1         -      -           "REFD_MAX"       "MAX DERIVED RADAR REFL"                        "dbZ"
 #state    real   UP_HELI_MAX      ij     misc        1         -      rh          "UP_HELI_MAX"    "MAX UPDRAFT HELICITY"                          "m2 s-2"
 #state    real   UH               ij     misc        1         -      r          "UH"             "UPDRAFT HELICITY"                              "m2 s-2"
 state    real   TCOLI_MAX        ij     misc        1         -      rh02       "TCOLI_MAX"       "MAX TOTAL COLUMN INTEGRATED ICE"               "kg m-2"
 state    real   GRPL_FLX_MAX     ij     misc        1         -      rh02       "GRPL_FLX_MAX"    "MAX PSEUDO GRAUPEL FLUX"                       "g kg-1 m s-1"
 state    real   REFD_COM         ij     misc        1         -      rh02       "REFD_COM"        "DERIVED COMPOSITE RADAR REFL"                  "dbZ"
 state    real   REFD             ij     misc        1         -      rh02       "REFD"            "DERIVED RADAR REFL"                            "dbZ"
-state    real   VIL              ij     misc        1         -      rh02       "VIL"             "VERTICALLY INTEGRATED LIQUID WATER"            "kg m-2"
-state    real   RADARVIL         ij     misc        1         -      rh02       "RADARVIL"        "VERTICALLY INTEGRATED LIQUID WATER FROM Ze"    "kg m-2"
+state    real   VIL              ij     misc        1         -      -          "VIL"             "VERTICALLY INTEGRATED LIQUID WATER"            "kg m-2" #zhixiao
+state    real   RADARVIL         ij     misc        1         -      -          "RADARVIL"        "VERTICALLY INTEGRATED LIQUID WATER FROM Ze"    "kg m-2" #zhixiao
+state    real   AFWA_LWP         ij     misc        1         -      rh02       "LWP"             "VERTICALLY INTEGRATED LIQUID WATER FROM CLOUD AND RAIN"    "kg m-2"
+state    real   AFWA_IWP         ij     misc        1         -      rh02       "IWP"        "VERTICALLY INTEGRATED ICE WATER FROM ICE GRAUPEL AND SNOW"  "kg m-2"
 state    real   ECHOTOP          ij     misc        1         -      rh02       "ECHOTOP"         "ECHO TOP HEIGHT FROM Ze"                       "m"
 state    real   FZLEV            ij     misc        1         -      rh02       "FZLEV"           "FREEZING LEVEL"                                "m"
 state    real   ICINGTOP         ij     misc        1         -      rh02       "ICINGTOP"        "TOPMOST ICING LEVEL"                           "m"
 state    real   ICINGBOT         ij     misc        1         -      rh02       "ICINGBOT"        "BOTTOMMOST ICING LEVEL"                        "m"
-state    real   QICING_LG        ikj    misc        1         -      r          "QICING_LG"       "SUPERCOOLED WATER MIXING RATIO (>50 um)"       "kg kg-1"
-state    real   QICING_SM        ikj    misc        1         -      r          "QICING_SM"       "SUPERCOOLED WATER MIXING RATIO (<50 um)"       "kg kg-1"
+state    real   QICING_LG        ikj    misc        1         -      -          "QICING_LG"       "SUPERCOOLED WATER MIXING RATIO (>50 um)"       "kg kg-1"
+state    real   QICING_SM        ikj    misc        1         -      -          "QICING_SM"       "SUPERCOOLED WATER MIXING RATIO (<50 um)"       "kg kg-1"
 state    real   QICING_LG_MAX    ij     misc        1         -      rh02       "QICING_LG_MAX"   "COLUMN MAX ICING MIXING RATIO (>50 um)"        "kg kg-1"
 state    real   QICING_SM_MAX    ij     misc        1         -      rh02       "QICING_SM_MAX"   "COLUMN MAX ICING MIXING RATIO (<50 um)"        "kg kg-1"
 state    real   ICING_LG         ij     misc        1         -      rh02       "ICING_LG"        "TOTAL COLUMN INTEGRATED ICING (>50 um)"        "kg m-2"
 state    real   ICING_SM         ij     misc        1         -      rh02       "ICING_SM"        "TOTAL COLUMN INTEGRATED ICING (<50 um)"        "kg m-2"
-state    real   AFWA_MSLP        ij     misc        1         -      rh02       "AFWA_MSLP"       "AFWA Diagnostic: Mean sea level pressure"      "Pa"
+state    real   AFWA_MSLP        ij     misc        1         -      -          "AFWA_MSLP"       "AFWA Diagnostic: Mean sea level pressure"      "Pa" #zhixiao
 state    real   AFWA_HEATIDX     ij     misc        1         -      rh02       "AFWA_HEATIDX"    "AFWA Diagnostic: Heat index"                   "K"
 state    real   AFWA_WCHILL      ij     misc        1         -      rh02       "AFWA_WCHILL"     "AFWA Diagnostic: Wind chill"                   "K"
 state    real   AFWA_FITS        ij     misc        1         -      rh02       "AFWA_FITS"       "AFWA Diagnostic: Fighter Index of Thermal Stress" "K"
@@ -69,14 +71,17 @@ state    real   AFWA_VIS_ALPHA   ij     misc        1         -      rh02       
 state    real   AFWA_VIS_DUST    ij     misc        1         -      rh02       "AFWA_VIS_DUST"   "AFWA Diagnostic: Visibility due to dust"       "m"
 state    real   AFWA_CLOUD       ij     misc        1         -      rh02       "AFWA_CLOUD"      "AFWA Diagnostic: Cloud cover fraction"         "fraction"
 state    real   AFWA_CLOUD_CEIL  ij     misc        1         -      rh02       "AFWA_CLOUD_CEIL" "AFWA Diagnostic: Cloud ceiling"                "m"
-state    real   AFWA_CAPE        ij     misc        1         -      rh02       "AFWA_CAPE"       "AFWA Diagnostic: Convective Avail Pot Energy"  "J kg-1"
-state    real   AFWA_CIN         ij     misc        1         -      rh02       "AFWA_CIN"        "AFWA Diagnostic: Convective Inhibition"        "J kg-1"
-state    real   AFWA_CAPE_MU     ij     misc        1         -      rh02       "AFWA_CAPE_MU"    "AFWA Diagnostic: Most unstable CAPE 0-180mb"   "J kg-1"
-state    real   AFWA_CIN_MU      ij     misc        1         -      rh02       "AFWA_CIN_MU"     "AFWA Diagnostic: Most unstable CIN 0-180mb"    "J kg-1"
-state    real   AFWA_ZLFC        ij     misc        1         -      rh02       "AFWA_ZLFC"       "AFWA Diagnostic: Level of Free Convection"     "m"
-state    real   AFWA_PLFC        ij     misc        1         -      rh02       "AFWA_PLFC"       "AFWA Diagnostic: Pressure of LFC"              "Pa"
-state    real   AFWA_LIDX        ij     misc        1         -      rh02       "AFWA_LIDX"       "AFWA Diagnostic: Surface Lifted Index"         "K"
-state    real   AFWA_PWAT        ij     misc        1         -      rh02       "AFWA_PWAT"       "AFWA Diagnostic: Precipitable Water"           "kg m-2"
+state    real   AFWA_CAPE        ij     misc        1         -      -          "AFWA_CAPE"       "AFWA Diagnostic: Convective Avail Pot Energy"  "J kg-1"
+state    real   AFWA_CIN         ij     misc        1         -      -          "AFWA_CIN"        "AFWA Diagnostic: Convective Inhibition"        "J kg-1"
+state    real   AFWA_CAPE_MU     ij     misc        1         -      rh02       "AFWA_CAPE_MU"    "Modified AFWA Diagnostic: Most unstable CAPE starting from max theta-e parcel below 500 mb"   "J kg-1"
+state    real   AFWA_CIN_MU      ij     misc        1         -      rh02       "AFWA_CIN_MU"     "Modified AFWA Diagnostic: Most unstable CIN starting from max theta-e parcel below 500 mb"    "J kg-1"
+state    real   AFWA_ZLFC        ij     misc        1         -      rh02       "AFWA_ZLFC"       "Modified AFWA Diagnostic: Level of Free Convection starting from the most unstable parcel"     "m"
+state    real   AFWA_PLFC        ij     misc        1         -      -          "AFWA_PLFC"       "AFWA Diagnostic: Pressure of LFC"              "Pa"
+state    real   AFWA_LIDX        ij     misc        1         -      -          "AFWA_LIDX"       "AFWA Diagnostic: Surface Lifted Index"         "K"
+state    real   AFWA_EL          ij     misc        1         -      rh02       "AFWA_EL"         "Added Diagnostic: Equilibrium level starting from the most unstable parcel"         "m" #zhixiao
+state    real   AFWA_LCL         ij     misc        1         -      rh02       "AFWA_LCL"        "Added Diagnostic: Lifted condensation level starting from the most unstable parcel"   "m" #zhixiao
+state    real   AFWA_LPL         ij     misc        1         -      rh02       "AFWA_LPL"        "Added Diagnostic: Lifted most unstable parcel level with the max theta-e below 500 mb"   "m" #zhixiao
+state    real   AFWA_PWAT        ij     misc        1         -      rh02       "AFWA_PWAT"       "Modified AFWA Diagnostic: Precipitable Water from water vapor"           "kg m-2"
 state    real   MIDRH_MIN        ij     misc        1         -      -          "MIDRH_MIN"       "Min Mid-level relative humidity"               "%"
 state    real   MIDRH_MIN_OLD    ij     misc        1         -      r          "MIDRH_MIN_OLD"   "Previous Min Mid-level relative humidity"      "%"
 state    real   AFWA_HAIL        ij     misc        1         -      rh02       "AFWA_HAIL"       "AFWA Diagnostic: Hail Diameter (Weibull)"      "mm"
@@ -85,19 +90,17 @@ state    real   AFWA_TORNADO     ij     misc        1         -      rh02       
 state    real   TORNADO_MASK     ij     misc        1         -      r          "TORNADO_MASK"       "Tornado mask, 1 if AFWA tornado > 0"                    ""
 state    real   TORNADO_DUR      ij     misc        1         -      r          "TORNADO_DUR"        "Tornado duration"                                       "sec"
 
-#  Package declaration for AFWA diagnostics
-
-package   afwa_diag      afwa_diag_opt==1            -             state:afwa_mslp,afwa_pwat,afwa_precip,afwa_totprecip
-package   afwa_ptype     afwa_ptype_opt==1           -             state:afwa_rain,afwa_snow,afwa_ice,afwa_fzra,afwa_snowfall
-package   afwa_vil       afwa_vil_opt==1             -             state:vil,radarvil
+package   afwa_diag      afwa_diag_opt==1            -             state:afwa_pwat
+package   afwa_ptype     afwa_ptype_opt==1           -             state:afwa_precip,afwa_totprecip,afwa_rain,afwa_snow,afwa_ice,afwa_fzra,afwa_snowfall
+package   afwa_vil       afwa_vil_opt==1             -             state:afwa_lwp,afwa_iwp,fzlev,afwa_pwat
 package   afwa_radar     afwa_radar_opt==1           -             state:echotop,refd_com,refd
-package   afwa_severe    afwa_severe_opt==1          -             state:w_up_max,w_dn_max,tcoli_max,up_heli_max,grpl_flx_max,w_mean,afwa_hail,afwa_cape,afwa_zlfc,afwa_plfc,tornado_mask,tornado_dur,midrh_min,midrh_min_old,afwa_lidx,afwa_cin,afwa_tornado,afwa_llws,wspd10max
+package   afwa_severe    afwa_severe_opt==1          -             state:w_up_max,w_dn_max,tcoli_max,up_heli_max,grpl_flx_max,w_mean,afwa_hail,afwa_zlfc,tornado_mask,tornado_dur,midrh_min,midrh_min_old,afwa_tornado,afwa_llws
 package   afwa_icing     afwa_icing_opt==1           -             state:fzlev,icingtop,icingbot,qicing_lg,qicing_sm,icing_lg,icing_sm,qicing_lg_max,qicing_sm_max
 package   afwa_cloud     afwa_cloud_opt==1           -             state:afwa_cloud,afwa_cloud_ceil
 package   afwa_vis       afwa_vis_opt==1             -             state:afwa_vis,afwa_vis_dust,afwa_vis_alpha
 package   afwa_therm     afwa_therm_opt==1           -             state:afwa_heatidx,afwa_wchill,afwa_fits
 package   afwa_turb      afwa_turb_opt==1            -             state:afwa_turb,afwa_llturb,afwa_llturblgt,afwa_llturbmdt,afwa_llturbsvr,afwa_tlyrbot,afwa_tlyrtop
-package   afwa_buoy      afwa_buoy_opt==1            -             state:afwa_cape,afwa_zlfc,afwa_plfc,afwa_lidx,afwa_cape_mu,afwa_cin,afwa_cin_mu
+package   afwa_buoy      afwa_buoy_opt==1            -             state:afwa_zlfc,afwa_cape_mu,afwa_cin_mu,afwa_lcl,afwa_lpl,afwa_el
 
 # For AFWA Diagnostics 
 halo      HALO_EM_PHYS_W   dyn_em 8:tornado_mask, tornado_dur
